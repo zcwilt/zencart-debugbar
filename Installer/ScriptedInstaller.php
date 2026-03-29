@@ -109,9 +109,8 @@ class ScriptedInstaller extends ScriptedInstallBase
             'set_function' => 'zen_cfg_select_option([\'true\', \'false\'],',
         ]);
 
-        zen_deregister_admin_pages(['configDebugBar', 'toolsDebugBar']);
+        zen_deregister_admin_pages(['configDebugBar']);
         zen_register_admin_page('configDebugBar', 'BOX_CONFIGURATION_DEBUG_BAR', 'FILENAME_CONFIGURATION', "gID=$cgi", 'configuration', 'Y');
-        zen_register_admin_page('toolsDebugBar', 'BOX_TOOLS_DEBUG_BAR', 'FILENAME_DEBUG_BAR_ADMIN', '', 'tools', 'Y');
 
         parent::executeInstall();
         return true;
@@ -119,7 +118,7 @@ class ScriptedInstaller extends ScriptedInstallBase
 
     protected function executeUninstall()
     {
-        zen_deregister_admin_pages(['configDebugBar', 'toolsDebugBar']);
+        zen_deregister_admin_pages(['configDebugBar']);
 
         $this->deleteConfigurationKeys([
             'DEBUG_BAR_ENABLED',
