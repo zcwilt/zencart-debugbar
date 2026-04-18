@@ -15,6 +15,7 @@ Zen Cart Debug Bar adds a lightweight debug panel for local development and trou
 - SQL query count and total SQL time
 - message-stack summary and grouped message details
 - template/language PHP include order for the current request
+- copy-to-clipboard buttons for expandable diagnostic sections
 - quick hide/show toggle remembered in the browser
 
 ## Configuration
