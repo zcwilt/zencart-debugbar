@@ -248,6 +248,20 @@ class zcObserverDebugBar extends base
             }
         }
 
+        $fileLoadOrderHtml = '';
+        if (!defined('DEBUG_BAR_SHOW_FILE_LOAD_ORDER') || DEBUG_BAR_SHOW_FILE_LOAD_ORDER === 'true') {
+            $fileLoadOrder = $this->getTemplateAndLanguageLoadOrder();
+            $parts[] = 'Templates: ' . $fileLoadOrder['template_count'];
+            $parts[] = 'Languages: ' . $fileLoadOrder['language_count'];
+
+            $fileLoadOrderHtml = '<details style="margin-top:6px;">'
+                . '<summary style="cursor:pointer;color:#67e8f9;">Template/Language File Load Order</summary>'
+                . '<pre style="margin:8px 0 0;max-height:320px;overflow:auto;white-space:pre-wrap;background:#111827;color:#d1d5db;padding:8px;border:1px solid #374151;">'
+                . htmlspecialchars(implode("\n", $fileLoadOrder['lines']), ENT_COMPAT, CHARSET, false)
+                . '</pre>'
+                . '</details>';
+        }
+
         echo '<div id="zc-debug-bar-toggle" style="display:none;position:fixed;right:12px;bottom:12px;z-index:100000;background:#111827;color:#f9fafb;padding:6px 10px;border:1px solid #374151;border-radius:4px;font:12px/1.4 monospace;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.25);">Show Debug Bar</div>'
             . '<div id="zc-debug-bar" style="position:fixed;left:0;right:0;bottom:0;z-index:99999;max-height:70vh;overflow-y:auto;background:#1f2937;color:#f9fafb;padding:8px 12px;font:12px/1.4 monospace;box-shadow:0 -2px 8px rgba(0,0,0,.25);">'
             . '<div style="position:sticky;top:-8px;z-index:1;display:flex;justify-content:space-between;align-items:center;gap:12px;margin:-8px -12px 8px;padding:8px 12px;background:#111827;border-bottom:1px solid #374151;">'
@@ -264,6 +278,7 @@ class zcObserverDebugBar extends base
             . $notifierHtml
             . $databaseHtml
             . $messageHtml
+            . $fileLoadOrderHtml
             . '</div>'
             . '<script>'
             . '(function(){'
@@ -284,5 +299,70 @@ class zcObserverDebugBar extends base
             . 'try{if(localStorage.getItem(storageKey)==="1"){hideBar();}}catch(e){}'
             . '})();'
             . '</script>';
+    }
+
+    private function getTemplateAndLanguageLoadOrder(): array
+    {
+        $files = get_included_files();
+        $lines = [];
+        $templateCount = 0;
+        $languageCount = 0;
+
+        foreach ($files as $index => $file) {
+            $normalized = str_replace('\\', '/', (string)$file);
+            $type = $this->getLoadOrderFileType($normalized);
+
+            if ($type === null) {
+                continue;
+            }
+
+            if ($type === 'template') {
+                $templateCount++;
+            } else {
+                $languageCount++;
+            }
+
+            $lines[] = sprintf(
+                '%03d. [%s] %s',
+                $index + 1,
+                strtoupper($type),
+                $this->formatDebugPath($normalized)
+            );
+        }
+
+        if ($lines === []) {
+            $lines[] = 'No template or language files were found in the PHP include list.';
+        }
+
+        return [
+            'lines' => $lines,
+            'template_count' => $templateCount,
+            'language_count' => $languageCount,
+        ];
+    }
+
+    private function getLoadOrderFileType(string $file): ?string
+    {
+        if (str_contains($file, '/includes/templates/') || str_contains($file, '/catalog/includes/templates/')) {
+            return 'template';
+        }
+
+        if (str_contains($file, '/includes/languages/') || str_contains($file, '/catalog/includes/languages/')) {
+            return 'language';
+        }
+
+        return null;
+    }
+
+    private function formatDebugPath(string $file): string
+    {
+        if (defined('DIR_FS_CATALOG')) {
+            $catalogRoot = rtrim(str_replace('\\', '/', DIR_FS_CATALOG), '/') . '/';
+            if (str_starts_with($file, $catalogRoot)) {
+                return substr($file, strlen($catalogRoot));
+            }
+        }
+
+        return $file;
     }
 }

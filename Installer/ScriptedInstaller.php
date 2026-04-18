@@ -109,6 +109,15 @@ class ScriptedInstaller extends ScriptedInstallBase
             'set_function' => 'zen_cfg_select_option([\'true\', \'false\'],',
         ]);
 
+        $this->addConfigurationKey('DEBUG_BAR_SHOW_FILE_LOAD_ORDER', [
+            'configuration_title' => 'Show Template/Language File Load Order?',
+            'configuration_value' => 'true',
+            'configuration_description' => 'Show template and language PHP files included during the current request, in the order PHP loaded them.',
+            'configuration_group_id' => $cgi,
+            'sort_order' => 110,
+            'set_function' => 'zen_cfg_select_option([\'true\', \'false\'],',
+        ]);
+
         zen_deregister_admin_pages(['configDebugBar']);
         zen_register_admin_page('configDebugBar', 'BOX_CONFIGURATION_DEBUG_BAR', 'FILENAME_CONFIGURATION', "gID=$cgi", 'configuration', 'Y');
 
@@ -132,6 +141,7 @@ class ScriptedInstaller extends ScriptedInstallBase
             'DEBUG_BAR_SHOW_NOTIFIERS',
             'DEBUG_BAR_SHOW_DATABASE',
             'DEBUG_BAR_SHOW_MESSAGES',
+            'DEBUG_BAR_SHOW_FILE_LOAD_ORDER',
         ]);
 
         parent::executeUninstall();
