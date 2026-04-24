@@ -355,6 +355,16 @@ class zcObserverDebugBar extends base
             return 'language';
         }
 
+        foreach (['payment', 'order_total', 'shipping'] as $module_type) {
+            if (str_contains($file, "/includes/modules/$module_type/") || str_contains($file, "/catalog/includes/modules/$module_type/")) {
+                return null;
+            }
+        }
+
+        if (str_contains($file, '/includes/modules/') || str_contains($file, '/catalog/includes/modules/')) {
+            return 'template';
+        }
+
         return null;
     }
 
