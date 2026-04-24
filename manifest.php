@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'pluginVersion' => 'v1.0.3',
+    'pluginVersion' => 'v1.0.4',
     'pluginName' => 'Zen Cart Debug Bar',
     'pluginDescription' => 'A lightweight debug bar scaffold for admin/storefront diagnostics and development visibility.',
     'pluginAuthor' => 'Ian Wilson(wilt)',
