@@ -3,6 +3,7 @@
 class zcObserverDebugBarAdmin extends base
 {
     private static array $eventTrace = [];
+    private static array $queryLog = [];
     private const EVENT_TRACE_LIMIT = 60;
 
     public function __construct()
@@ -14,6 +15,12 @@ class zcObserverDebugBarAdmin extends base
     {
         if ($eventID === 'NOTIFY_ADMIN_FOOTER_END') {
             $this->renderDebugBar();
+            return;
+        }
+
+        if ($eventID === 'NOTIFY_QUERY_FACTORY_EXECUTE_END' && is_array($paramsArray)) {
+            self::$queryLog[] = $paramsArray;
+
             return;
         }
 
@@ -177,20 +184,22 @@ class zcObserverDebugBarAdmin extends base
         }
 
         $databaseHtml = '';
-        if (defined('DEBUG_BAR_SHOW_DATABASE') && DEBUG_BAR_SHOW_DATABASE === 'true' && isset($db) && is_object($db)) {
+        $sqlQueriesHtml = '';
+        if (isset($db) && is_object($db)) {
             $queryCount = method_exists($db, 'queryCount') ? (int)$db->queryCount() : null;
             $queryTime = method_exists($db, 'queryTime') ? (float)$db->queryTime() : null;
+            if (defined('DEBUG_BAR_SHOW_DATABASE') && DEBUG_BAR_SHOW_DATABASE === 'true') {
+                $databaseSummary = [];
+                if ($queryCount !== null) {
+                    $databaseSummary[] = 'Queries: ' . $queryCount;
+                }
+                if ($queryTime !== null) {
+                    $databaseSummary[] = 'SQL Time: ' . number_format($queryTime, 4) . 's';
+                }
 
-            $databaseSummary = [];
-            if ($queryCount !== null) {
-                $databaseSummary[] = 'Queries: ' . $queryCount;
-            }
-            if ($queryTime !== null) {
-                $databaseSummary[] = 'SQL Time: ' . number_format($queryTime, 4) . 's';
-            }
-
-            if ($databaseSummary !== []) {
-                $parts[] = implode(', ', $databaseSummary);
+                if ($databaseSummary !== []) {
+                    $parts[] = implode(', ', $databaseSummary);
+                }
 
                 $databaseDetails = [];
                 if ($queryCount !== null) {
@@ -209,6 +218,18 @@ class zcObserverDebugBarAdmin extends base
                     . htmlspecialchars(implode("\n", $databaseDetails), ENT_COMPAT, CHARSET, false)
                     . '</pre>'
                     . '</details>';
+            }
+
+            if (defined('DEBUG_BAR_SHOW_SQL_QUERIES') && DEBUG_BAR_SHOW_SQL_QUERIES === 'true') {
+                $parts[] = 'Query groups: ' . $this->countQueryGroups();
+                $sqlQueriesHtml = self::$queryLog !== []
+                    ? $this->buildQueryLogDetails() . $this->buildSlowQueriesDetails()
+                    : '<details style="margin-top:6px;">'
+                        . '<summary style="cursor:pointer;color:#f9a8d4;">SQL Queries</summary>'
+                        . '<pre style="margin:8px 0 0;max-height:180px;overflow:auto;white-space:pre-wrap;background:#111827;color:#d1d5db;padding:8px;border:1px solid #374151;">'
+                        . htmlspecialchars('Detailed query log unavailable on this Zen Cart version.', ENT_COMPAT, CHARSET, false)
+                        . '</pre>'
+                        . '</details>';
             }
         }
 
@@ -280,6 +301,7 @@ class zcObserverDebugBarAdmin extends base
             . $serverHtml
             . $notifierHtml
             . $databaseHtml
+            . $sqlQueriesHtml
             . $messageHtml
             . $fileLoadOrderHtml
             . '</div>'
@@ -371,5 +393,149 @@ class zcObserverDebugBarAdmin extends base
         }
 
         return $file;
+    }
+
+    private function buildQueryLogDetails(): string
+    {
+        $groups = [];
+
+        foreach (self::$queryLog as $query) {
+            $sql = trim((string)($query['sql'] ?? ''));
+            $sql = preg_replace('/\s+/', ' ', $sql ?? '');
+            $sql = $sql === '' ? '[empty sql]' : $sql;
+            $fingerprint = $this->fingerprintSql($sql);
+
+            if (!isset($groups[$fingerprint])) {
+                $groups[$fingerprint] = [
+                    'pattern_sql' => $fingerprint,
+                    'sample_sql' => $sql,
+                    'method' => (string)($query['method'] ?? 'unknown'),
+                    'count' => 0,
+                    'total_time' => 0.0,
+                    'max_time' => 0.0,
+                    'rows_total' => 0,
+                    'affected_total' => 0,
+                    'cached_count' => 0,
+                    'error_count' => 0,
+                ];
+            }
+
+            $time = (float)($query['query_time'] ?? 0);
+            $groups[$fingerprint]['count']++;
+            $groups[$fingerprint]['total_time'] += $time;
+            $groups[$fingerprint]['max_time'] = max($groups[$fingerprint]['max_time'], $time);
+            $groups[$fingerprint]['rows_total'] += (int)($query['record_count'] ?? 0);
+            $groups[$fingerprint]['affected_total'] += (int)($query['affected_rows'] ?? 0);
+
+            if (!empty($query['is_cached'])) {
+                $groups[$fingerprint]['cached_count']++;
+            }
+            if (empty($query['success'])) {
+                $groups[$fingerprint]['error_count']++;
+            }
+        }
+
+        uasort($groups, static function (array $left, array $right): int {
+            if ($left['count'] === $right['count']) {
+                return $right['total_time'] <=> $left['total_time'];
+            }
+
+            return $right['count'] <=> $left['count'];
+        });
+
+        $lines = [];
+        $groupIndex = 1;
+        foreach ($groups as $group) {
+            $avgTime = $group['count'] > 0 ? $group['total_time'] / $group['count'] : 0.0;
+            $avgRows = $group['count'] > 0 ? $group['rows_total'] / $group['count'] : 0.0;
+
+            $lines[] = sprintf('%03d. %s', $groupIndex, $group['pattern_sql']);
+            $lines[] = '     ' . implode(' | ', [
+                'method=' . $group['method'],
+                'count=' . $group['count'],
+                'total=' . number_format($group['total_time'], 6) . 's',
+                'avg=' . number_format($avgTime, 6) . 's',
+                'max=' . number_format($group['max_time'], 6) . 's',
+                'avg_rows=' . number_format($avgRows, 2),
+                'affected_total=' . $group['affected_total'],
+                'cached=' . $group['cached_count'],
+                'errors=' . $group['error_count'],
+            ]);
+            $lines[] = '     sample=' . $group['sample_sql'];
+            $lines[] = '';
+            $groupIndex++;
+        }
+
+        return '<details style="margin-top:6px;">'
+            . '<summary style="cursor:pointer;color:#f9a8d4;">SQL Query Summary</summary>'
+            . '<pre style="margin:8px 0 0;max-height:320px;overflow:auto;white-space:pre-wrap;background:#111827;color:#d1d5db;padding:8px;border:1px solid #374151;">'
+            . htmlspecialchars(trim(implode("\n", $lines)), ENT_COMPAT, CHARSET, false)
+            . '</pre>'
+            . '</details>';
+    }
+
+    private function fingerprintSql(string $sql): string
+    {
+        $normalized = strtolower($sql);
+        $normalized = preg_replace("/'[^']*'/", '?', $normalized) ?? $normalized;
+        $normalized = preg_replace('/"[^"]*"/', '?', $normalized) ?? $normalized;
+        $normalized = preg_replace('/\b\d+\b/', '?', $normalized) ?? $normalized;
+        $normalized = preg_replace('/\s+/', ' ', $normalized) ?? $normalized;
+
+        return trim($normalized);
+    }
+
+    private function countQueryGroups(): int
+    {
+        $groups = [];
+
+        foreach (self::$queryLog as $query) {
+            $sql = trim((string)($query['sql'] ?? ''));
+            $sql = preg_replace('/\s+/', ' ', $sql ?? '');
+            $sql = $sql === '' ? '[empty sql]' : $sql;
+            $groups[$this->fingerprintSql($sql)] = true;
+        }
+
+        return count($groups);
+    }
+
+    private function buildSlowQueriesDetails(): string
+    {
+        $queries = self::$queryLog;
+        usort($queries, static function (array $left, array $right): int {
+            return ((float)($right['query_time'] ?? 0)) <=> ((float)($left['query_time'] ?? 0));
+        });
+
+        $queries = array_slice($queries, 0, 20);
+        $lines = [];
+
+        foreach ($queries as $index => $query) {
+            $sql = trim((string)($query['sql'] ?? ''));
+            $sql = preg_replace('/\s+/', ' ', $sql ?? '');
+            $sql = $sql === '' ? '[empty sql]' : $sql;
+
+            $lines[] = sprintf('%03d. %s', $index + 1, $sql);
+            $lines[] = '     ' . implode(' | ', [
+                'time=' . number_format((float)($query['query_time'] ?? 0), 6) . 's',
+                'method=' . (string)($query['method'] ?? 'unknown'),
+                'rows=' . (int)($query['record_count'] ?? 0),
+                'affected=' . (int)($query['affected_rows'] ?? 0),
+                'cached=' . (!empty($query['is_cached']) ? 'yes' : 'no'),
+                'success=' . (!empty($query['success']) ? 'yes' : 'no'),
+            ]);
+
+            if (!empty($query['error_number'])) {
+                $lines[] = '     error=' . (int)$query['error_number'] . ' | error_text=' . (string)($query['error_text'] ?? '');
+            }
+
+            $lines[] = '';
+        }
+
+        return '<details style="margin-top:6px;">'
+            . '<summary style="cursor:pointer;color:#fca5a5;">Top 20 Slowest Query Executions</summary>'
+            . '<pre style="margin:8px 0 0;max-height:320px;overflow:auto;white-space:pre-wrap;background:#111827;color:#d1d5db;padding:8px;border:1px solid #374151;">'
+            . htmlspecialchars(trim(implode("\n", $lines)), ENT_COMPAT, CHARSET, false)
+            . '</pre>'
+            . '</details>';
     }
 }

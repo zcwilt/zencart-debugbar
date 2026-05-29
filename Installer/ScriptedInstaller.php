@@ -100,6 +100,15 @@ class ScriptedInstaller extends ScriptedInstallBase
             'set_function' => 'zen_cfg_select_option([\'true\', \'false\'],',
         ]);
 
+        $this->addConfigurationKey('DEBUG_BAR_SHOW_SQL_QUERIES', [
+            'configuration_title' => 'Show Detailed SQL Queries?',
+            'configuration_value' => 'true',
+            'configuration_description' => 'Show the per-query SQL log when the current Zen Cart version emits query execution notifiers.',
+            'configuration_group_id' => $cgi,
+            'sort_order' => 95,
+            'set_function' => 'zen_cfg_select_option([\'true\', \'false\'],',
+        ]);
+
         $this->addConfigurationKey('DEBUG_BAR_SHOW_MESSAGES', [
             'configuration_title' => 'Show Message Stack?',
             'configuration_value' => 'true',
@@ -140,6 +149,7 @@ class ScriptedInstaller extends ScriptedInstallBase
             'DEBUG_BAR_SHOW_SERVER',
             'DEBUG_BAR_SHOW_NOTIFIERS',
             'DEBUG_BAR_SHOW_DATABASE',
+            'DEBUG_BAR_SHOW_SQL_QUERIES',
             'DEBUG_BAR_SHOW_MESSAGES',
             'DEBUG_BAR_SHOW_FILE_LOAD_ORDER',
         ]);

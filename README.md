@@ -13,6 +13,8 @@ Zen Cart Debug Bar adds a lightweight debug panel for local development and trou
 - admin page context including current PHP page, action, cmd, and admin session details
 - notifier/event trace for the current request
 - SQL query count and total SQL time
+- SQL Query Summary grouped by normalized query pattern, including counts and timing totals
+- Top 20 Slowest Query Executions for the current request
 - message-stack summary and grouped message details
 - template/language PHP include order for the current request
 - copy-to-clipboard buttons for expandable diagnostic sections
@@ -39,8 +41,11 @@ Available settings let you toggle individual sections on or off:
 - server
 - notifier trace
 - database query summary
+- detailed SQL query diagnostics
 - message stack
 - template/language file load order
+
+`database query summary` and `detailed SQL query diagnostics` can be enabled independently.
 
 ## Notes
 
@@ -48,6 +53,9 @@ Available settings let you toggle individual sections on or off:
 - The hide/show toggle is stored in browser `localStorage`.
 - If new configuration keys are added in code, the plugin install or upgrade logic needs to run before those keys appear in admin configuration.
 - `DEBUG_BAR_SHOW_FILE_LOAD_ORDER` defaults to visible when the constant is missing, so existing local installs can use the panel before rerunning install/upgrade.
+- Detailed SQL query diagnostics depend on the `NOTIFY_QUERY_FACTORY_EXECUTE_END` core notifier. On older Zen Cart versions, the debug bar falls back to query count and total SQL time only.
+- The SQL Query Summary groups normalized query patterns and shows one raw sample query for each pattern.
+- The slow-query panel shows the top 20 individual query executions by elapsed time.
 
 ## Future ideas
 
