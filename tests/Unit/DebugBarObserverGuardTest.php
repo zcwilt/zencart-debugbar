@@ -74,14 +74,19 @@ class DebugBarObserverGuardTest extends TestCase
 
     private function runGuardProbe(string $context, array $defines, array $session): string
     {
-        $rootPath = realpath(__DIR__ . '/../../../../..');
-        $observerPath = $rootPath . '/zc_plugins/debug-bar/v1.0.5/'
+        $pluginRoot = realpath(__DIR__ . '/../..');
+        $this->assertNotFalse($pluginRoot, 'Unable to resolve plugin root.');
+
+        $rootPath = realpath($pluginRoot . '/../../..');
+        $this->assertNotFalse($rootPath, 'Unable to resolve Zen Cart root.');
+
+        $observerPath = $pluginRoot . '/'
             . ($context === 'admin'
                 ? 'admin/includes/classes/observers/auto.debug_bar_admin.php'
                 : 'catalog/includes/classes/observers/auto.debug_bar.php');
         $observerClass = $context === 'admin' ? 'zcObserverDebugBarAdmin' : 'zcObserverDebugBar';
 
-        $defineLines = ["define('DIR_FS_CATALOG', " . var_export($rootPath . '/', true) . ');'];
+        $defineLines = ["define('DIR_FS_CATALOG', " . var_export(rtrim($rootPath, '/') . '/', true) . ');'];
         foreach ($defines as $key => $value) {
             $defineLines[] = "define('{$key}', " . var_export($value, true) . ');';
         }

@@ -8,9 +8,9 @@ on:
 env:
   GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
   GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
-  ZC_CORE_REPOSITORY: zcwilt/zencart
-  ZC_CORE_REF: feature/local-plugin-testing
-  ZC_PLUGIN_NAME: gdpr-dsar
+  ZC_CORE_REPOSITORY: zencart/zencart
+  ZC_CORE_REF: master
+  ZC_PLUGIN_NAME: debug-bar
   ZC_TEST_RUNNER_IMAGE: ghcr.io/zencart/zencart-test-runner
 
 jobs:
