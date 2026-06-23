@@ -26,10 +26,12 @@ The plugin creates a `Debug Bar` configuration group in admin.
 
 Current defaults are:
 
-- `DEBUG_BAR_ENABLED = true`
-- `DEBUG_BAR_ADMINS_ONLY = false`
+- `DEBUG_BAR_ENABLED = false`
+- `DEBUG_BAR_ADMINS_ONLY = true`
 - `DEBUG_BAR_SHOW_IN_ADMIN = true`
 - diagnostic sections enabled by default
+
+The storefront observer now fails closed unless the plugin is explicitly enabled, runs in catalog context, and passes the `DEBUG_BAR_ADMINS_ONLY` gate. The admin observer renders only on authenticated admin requests.
 
 Available settings let you toggle individual sections on or off:
 
@@ -50,6 +52,7 @@ Available settings let you toggle individual sections on or off:
 ## Notes
 
 - This plugin is intended for development and debugging use.
+- Do not enable it on a public storefront unless you intentionally want authenticated admin sessions to see request, session, SQL, and file-load diagnostics.
 - The hide/show toggle is stored in browser `localStorage`.
 - If new configuration keys are added in code, the plugin install or upgrade logic needs to run before those keys appear in admin configuration.
 - `DEBUG_BAR_SHOW_FILE_LOAD_ORDER` defaults to visible when the constant is missing, so existing local installs can use the panel before rerunning install/upgrade.

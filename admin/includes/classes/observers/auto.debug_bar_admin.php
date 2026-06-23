@@ -38,11 +38,7 @@ class zcObserverDebugBarAdmin extends base
     {
         global $db, $messageStack;
 
-        if (!defined('DEBUG_BAR_ENABLED') || DEBUG_BAR_ENABLED !== 'true') {
-            return;
-        }
-
-        if (!defined('DEBUG_BAR_SHOW_IN_ADMIN') || DEBUG_BAR_SHOW_IN_ADMIN !== 'true') {
+        if (!$this->shouldRenderDebugBar()) {
             return;
         }
 
@@ -328,6 +324,27 @@ class zcObserverDebugBarAdmin extends base
             . 'try{if(localStorage.getItem(storageKey)==="1"){hideBar();}}catch(e){}'
             . '})();'
             . '</script>';
+    }
+
+    protected function shouldRenderDebugBar(): bool
+    {
+        if (!defined('DEBUG_BAR_ENABLED') || DEBUG_BAR_ENABLED !== 'true') {
+            return false;
+        }
+
+        if (!defined('IS_ADMIN_FLAG') || IS_ADMIN_FLAG !== true) {
+            return false;
+        }
+
+        if (!defined('DEBUG_BAR_SHOW_IN_ADMIN') || DEBUG_BAR_SHOW_IN_ADMIN !== 'true') {
+            return false;
+        }
+
+        if (empty($_SESSION['admin_id'])) {
+            return false;
+        }
+
+        return true;
     }
 
     private function getTemplateAndLanguageLoadOrder(): array

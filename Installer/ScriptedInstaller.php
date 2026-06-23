@@ -12,8 +12,8 @@ class ScriptedInstaller extends ScriptedInstallBase
 
         $this->addConfigurationKey('DEBUG_BAR_ENABLED', [
             'configuration_title' => 'Enable Debug Bar?',
-            'configuration_value' => 'true',
-            'configuration_description' => 'Enable the storefront debug bar output.',
+            'configuration_value' => 'false',
+            'configuration_description' => 'Enable the debug bar output. Leave disabled by default and enable only for active debugging.',
             'configuration_group_id' => $cgi,
             'sort_order' => 10,
             'set_function' => 'zen_cfg_select_option([\'true\', \'false\'],',
@@ -21,8 +21,8 @@ class ScriptedInstaller extends ScriptedInstallBase
 
         $this->addConfigurationKey('DEBUG_BAR_ADMINS_ONLY', [
             'configuration_title' => 'Admins Only?',
-            'configuration_value' => 'false',
-            'configuration_description' => 'Restrict debug bar visibility to logged-in admin sessions only.',
+            'configuration_value' => 'true',
+            'configuration_description' => 'Restrict storefront debug bar visibility to logged-in admin sessions only.',
             'configuration_group_id' => $cgi,
             'sort_order' => 20,
             'set_function' => 'zen_cfg_select_option([\'true\', \'false\'],',
@@ -134,6 +134,14 @@ class ScriptedInstaller extends ScriptedInstallBase
         return true;
     }
 
+    protected function executeUpgrade($oldVersion)
+    {
+        $this->applySecureDefaultsToLegacyInstall();
+
+        parent::executeUpgrade($oldVersion);
+        return true;
+    }
+
     protected function executeUninstall()
     {
         zen_deregister_admin_pages(['configDebugBar']);
@@ -156,5 +164,29 @@ class ScriptedInstaller extends ScriptedInstallBase
 
         parent::executeUninstall();
         return true;
+    }
+
+    protected function applySecureDefaultsToLegacyInstall(): void
+    {
+        $enabledDetails = $this->getConfigurationKeyDetails('DEBUG_BAR_ENABLED');
+        $adminsOnlyDetails = $this->getConfigurationKeyDetails('DEBUG_BAR_ADMINS_ONLY');
+
+        if ($enabledDetails !== false && $adminsOnlyDetails !== false
+            && ($enabledDetails['configuration_value'] ?? null) === 'true'
+            && ($adminsOnlyDetails['configuration_value'] ?? null) === 'false'
+        ) {
+            $this->updateConfigurationKey('DEBUG_BAR_ENABLED', ['configuration_value' => 'false']);
+            $this->updateConfigurationKey('DEBUG_BAR_ADMINS_ONLY', ['configuration_value' => 'true']);
+        }
+
+        $this->updateConfigurationKey('DEBUG_BAR_ENABLED', [
+            'configuration_title' => 'Enable Debug Bar?',
+            'configuration_description' => 'Enable the debug bar output. Leave disabled by default and enable only for active debugging.',
+        ]);
+
+        $this->updateConfigurationKey('DEBUG_BAR_ADMINS_ONLY', [
+            'configuration_title' => 'Admins Only?',
+            'configuration_description' => 'Restrict storefront debug bar visibility to logged-in admin sessions only.',
+        ]);
     }
 }
