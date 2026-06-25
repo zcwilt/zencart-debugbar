@@ -56,6 +56,11 @@ The storefront observer now fails closed unless all of the following are true:
 
 The `DEBUG_BAR_ENVIRONMENT` gate is intentionally outside the database and outside Plugin Manager configuration. If that constant is missing or set to anything other than `development`, the storefront bar does not render, even when the plugin is enabled in admin.
 
+`DEBUG_BAR_ADMINS_ONLY` still matters after the environment gate passes:
+
+- if `DEBUG_BAR_ADMINS_ONLY = true`, the storefront bar appears only for storefront requests that also carry an admin session
+- if `DEBUG_BAR_ADMINS_ONLY = false`, the storefront bar can appear for a normal storefront visitor session
+
 The admin observer renders only on authenticated admin requests that also have the `configDebugBarView` permission. That permission key is registered by the installer, but it is permission-only and does not appear as a menu item; grant it through Admin Profiles to trusted admin users. Superusers pass this gate automatically, while non-superusers need the explicit profile permission.
 
 Available settings let you toggle individual sections on or off:
