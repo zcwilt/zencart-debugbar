@@ -129,6 +129,7 @@ class ScriptedInstaller extends ScriptedInstallBase
 
         zen_deregister_admin_pages(['configDebugBar']);
         zen_register_admin_page('configDebugBar', 'BOX_CONFIGURATION_DEBUG_BAR', 'FILENAME_CONFIGURATION', "gID=$cgi", 'configuration', 'Y');
+        zen_register_admin_page('configDebugBarView', 'BOX_CONFIGURATION_DEBUG_BAR_VIEW', 'FILENAME_CONFIGURATION', '', 'configuration', 'N');
 
         parent::executeInstall();
         return true;
@@ -137,6 +138,7 @@ class ScriptedInstaller extends ScriptedInstallBase
     protected function executeUpgrade($oldVersion)
     {
         $this->applySecureDefaultsToLegacyInstall();
+        $this->addNewSecureKeysForLegacyUpgrade((string)$oldVersion);
 
         parent::executeUpgrade($oldVersion);
         return true;
@@ -144,7 +146,7 @@ class ScriptedInstaller extends ScriptedInstallBase
 
     protected function executeUninstall()
     {
-        zen_deregister_admin_pages(['configDebugBar']);
+        zen_deregister_admin_pages(['configDebugBar', 'configDebugBarView']);
 
         $this->deleteConfigurationKeys([
             'DEBUG_BAR_ENABLED',
@@ -188,5 +190,19 @@ class ScriptedInstaller extends ScriptedInstallBase
             'configuration_title' => 'Admins Only?',
             'configuration_description' => 'Restrict storefront debug bar visibility to logged-in admin sessions only.',
         ]);
+    }
+
+    protected function addNewSecureKeysForLegacyUpgrade(string $oldVersion): void
+    {
+        if (version_compare($oldVersion, '1.0.6', '<')) {
+            $this->addConfigurationKey('DEBUG_BAR_SHOW_SQL_QUERIES', [
+                'configuration_title' => 'Show Detailed SQL Queries?',
+                'configuration_value' => 'false',
+                'configuration_description' => 'Show the per-query SQL log when the current Zen Cart version emits query execution notifiers.',
+                'configuration_group_id' => $this->getOrCreateConfigGroupId(self::CONFIG_GROUP_TITLE, self::CONFIG_GROUP_TITLE . ' Settings'),
+                'sort_order' => 95,
+                'set_function' => 'zen_cfg_select_option([\'true\', \'false\'],',
+            ]);
+        }
     }
 }

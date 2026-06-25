@@ -17,6 +17,7 @@ class DebugBarObserverGuardTest extends TestCase
         $result = $this->runGuardProbe(
             'catalog',
             [
+                'DEBUG_BAR_ENVIRONMENT' => 'development',
                 'IS_ADMIN_FLAG' => false,
                 'DEBUG_BAR_ENABLED' => 'false',
                 'DEBUG_BAR_ADMINS_ONLY' => 'true',
@@ -32,11 +33,28 @@ class DebugBarObserverGuardTest extends TestCase
         $result = $this->runGuardProbe(
             'catalog',
             [
+                'DEBUG_BAR_ENVIRONMENT' => 'production',
                 'IS_ADMIN_FLAG' => false,
                 'DEBUG_BAR_ENABLED' => 'true',
                 'DEBUG_BAR_ADMINS_ONLY' => 'true',
             ],
             []
+        );
+
+        $this->assertSame('0', $result);
+    }
+
+    public function testCatalogObserverRejectsRequestsOutsideDevelopmentEnvironment(): void
+    {
+        $result = $this->runGuardProbe(
+            'catalog',
+            [
+                'DEBUG_BAR_ENVIRONMENT' => 'production',
+                'IS_ADMIN_FLAG' => false,
+                'DEBUG_BAR_ENABLED' => 'true',
+                'DEBUG_BAR_ADMINS_ONLY' => 'true',
+            ],
+            ['admin_id' => 1]
         );
 
         $this->assertSame('0', $result);
@@ -72,7 +90,39 @@ class DebugBarObserverGuardTest extends TestCase
         $this->assertSame('1', $result);
     }
 
-    private function runGuardProbe(string $context, array $defines, array $session): string
+    public function testAdminObserverRequiresPermissionGrant(): void
+    {
+        $result = $this->runGuardProbe(
+            'admin',
+            [
+                'IS_ADMIN_FLAG' => true,
+                'DEBUG_BAR_ENABLED' => 'true',
+                'DEBUG_BAR_SHOW_IN_ADMIN' => 'true',
+            ],
+            ['admin_id' => 1],
+            false
+        );
+
+        $this->assertSame('0', $result);
+    }
+
+    public function testAdminObserverAllowsPermittedAdminRequest(): void
+    {
+        $result = $this->runGuardProbe(
+            'admin',
+            [
+                'IS_ADMIN_FLAG' => true,
+                'DEBUG_BAR_ENABLED' => 'true',
+                'DEBUG_BAR_SHOW_IN_ADMIN' => 'true',
+            ],
+            ['admin_id' => 1],
+            true
+        );
+
+        $this->assertSame('1', $result);
+    }
+
+    private function runGuardProbe(string $context, array $defines, array $session, bool $allowDebugBarView = true): string
     {
         $pluginRoot = realpath(__DIR__ . '/../..');
         $this->assertNotFalse($pluginRoot, 'Unable to resolve plugin root.');
@@ -96,6 +146,9 @@ class DebugBarObserverGuardTest extends TestCase
             implode("\n", $defineLines),
             '$_SESSION = ' . var_export($session, true) . ';',
             'require ' . var_export($rootPath . '/includes/classes/class.base.php', true) . ';',
+            $context === 'admin'
+                ? 'function check_page(string $page, $params = []): bool { return ' . ($allowDebugBarView ? 'true' : 'false') . '; }'
+                : '',
             'require ' . var_export($observerPath, true) . ';',
             '$observer = new class extends ' . $observerClass . ' { public function __construct() {} public function canRender(): bool { return $this->shouldRenderDebugBar(); } };',
             "echo \$observer->canRender() ? '1' : '0';",

@@ -3,5 +3,5 @@
 return [
     'HEADING_TITLE' => 'Zen Cart Debug Bar',
     'TEXT_DEBUG_BAR_INTRO' => 'This plugin provides a starting point for a storefront debug bar and related diagnostics.',
-    'TEXT_DEBUG_BAR_CONFIG_HINT' => 'Use Configuration -> Debug Bar to control visibility and basic debug-bar options.',
+    'TEXT_DEBUG_BAR_CONFIG_HINT' => 'Use Configuration -> Debug Bar to control visibility and basic debug-bar options. Grant Debug Bar: View Output only to trusted admin profiles.',
 ];

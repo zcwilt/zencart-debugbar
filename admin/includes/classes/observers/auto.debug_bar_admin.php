@@ -344,6 +344,10 @@ class zcObserverDebugBarAdmin extends base
             return false;
         }
 
+        if (!function_exists('check_page') || !check_page('configDebugBarView')) {
+            return false;
+        }
+
         return true;
     }
 
@@ -425,7 +429,7 @@ class zcObserverDebugBarAdmin extends base
             if (!isset($groups[$fingerprint])) {
                 $groups[$fingerprint] = [
                     'pattern_sql' => $fingerprint,
-                    'sample_sql' => $sql,
+                    'sample_sql' => $this->redactSqlLiterals($sql),
                     'method' => (string)($query['method'] ?? 'unknown'),
                     'count' => 0,
                     'total_time' => 0.0,
@@ -493,13 +497,19 @@ class zcObserverDebugBarAdmin extends base
 
     private function fingerprintSql(string $sql): string
     {
-        $normalized = strtolower($sql);
-        $normalized = preg_replace("/'[^']*'/", '?', $normalized) ?? $normalized;
-        $normalized = preg_replace('/"[^"]*"/', '?', $normalized) ?? $normalized;
-        $normalized = preg_replace('/\b\d+\b/', '?', $normalized) ?? $normalized;
+        $normalized = strtolower($this->redactSqlLiterals($sql));
         $normalized = preg_replace('/\s+/', ' ', $normalized) ?? $normalized;
 
         return trim($normalized);
+    }
+
+    private function redactSqlLiterals(string $sql): string
+    {
+        $redacted = preg_replace("/'[^']*'/", '?', $sql) ?? $sql;
+        $redacted = preg_replace('/"[^"]*"/', '?', $redacted) ?? $redacted;
+        $redacted = preg_replace('/\b\d+\b/', '?', $redacted) ?? $redacted;
+
+        return preg_replace('/\s+/', ' ', $redacted) ?? $redacted;
     }
 
     private function countQueryGroups(): int
@@ -531,7 +541,7 @@ class zcObserverDebugBarAdmin extends base
             $sql = preg_replace('/\s+/', ' ', $sql ?? '');
             $sql = $sql === '' ? '[empty sql]' : $sql;
 
-            $lines[] = sprintf('%03d. %s', $index + 1, $sql);
+            $lines[] = sprintf('%03d. %s', $index + 1, $this->redactSqlLiterals($sql));
             $lines[] = '     ' . implode(' | ', [
                 'time=' . number_format((float)($query['query_time'] ?? 0), 6) . 's',
                 'method=' . (string)($query['method'] ?? 'unknown'),
